@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: smartmetriq
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: SMARTMETRIQ_SECRET_KEY
+        generateValue: true
+      - key: SMARTMETRIQ_SECURE_COOKIES
+        value: "1"
