@@ -13,9 +13,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   </head>
   <body>
-    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-dark app-nav">
       <div class="container">
-        <a class="navbar-brand fw-bold" href="{{ url_for('home') }}">⚖️ SmartMetriQ</a>
+        <a class="navbar-brand" href="{{ url_for('home') }}"><span class="brand-mark">S</span><span>SmartMetriQ</span></a>
         <button
           class="navbar-toggler"
           type="button"
@@ -32,25 +32,23 @@
           <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
             {% if session.get('logged_in') %}
               {% if session.get('mode') == 'officer' or session.get('user_role') == 'officer' %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">📊 Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('scanner') }}">📷 Physical Product Scanner</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('ecommerce_checker_page') }}">🛒 E-Commerce Checker</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('history') }}">📋 Inspections</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('potential_issues') }}">⚠️ Potential Issues</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('audit_trail') }}">📝 Audit Trail</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('reports_page') }}">📄 Reports</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('officer_complaints') }}">📢 Complaints</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('scanner') }}">Scan product</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('ecommerce_checker_page') }}">Online check</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('history') }}">Inspections</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('potential_issues') }}">Issues</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('reports_page') }}">Reports</a></li>
               {% else %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('home') }}">🏠 Home</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('scanner') }}">📷 Scan Product</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('ecommerce_checker_page') }}">🛒 Check Online Product</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('know_rules') }}">⚖️ Know the Rules</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('consumer_complaint_new') }}">📢 Report a Problem</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('consumer_dashboard') }}">📋 My Complaints</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('home') }}">Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('scanner') }}">Scan product</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('ecommerce_checker_page') }}">Online check</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('know_rules') }}">Rules</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('consumer_complaint_new') }}">Report a problem</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('consumer_dashboard') }}">My complaints</a></li>
               {% endif %}
               <li class="nav-item ms-lg-3">
                 <a class="btn btn-sm btn-light" href="{{ url_for('switch_mode', mode='officer' if session.get('mode') != 'officer' and session.get('user_role') != 'officer' else 'consumer') }}">
-                  {% if session.get('mode') == 'officer' or session.get('user_role') == 'officer' %}👤 Consumer{% else %}👮 Officer{% endif %}
+                  {% if session.get('mode') == 'officer' or session.get('user_role') == 'officer' %}Consumer view{% else %}Officer view{% endif %}
                 </a>
               </li>
               <li class="nav-item">

@@ -48,7 +48,6 @@
             {% endif %}
 
             <p class="mt-3 mb-3"><strong>Summary:</strong> {{ inspection.result_message or inspection.result }}</p>
-            <p>{{ inspection.result_message or 'Automated preliminary compliance screening. Final determination requires verification by an authorized officer.' }}</p>
             <p class="mb-0"><strong>Processing:</strong> Standard OCR with image enhancement</p>
             <p class="mb-0"><strong>OCR Language:</strong> {{ inspection.language_label if inspection.language_label else inspection.language }}</p>
             <p class="mb-0"><strong>OCR Confidence:</strong> {{ inspection.ocr_confidence|round(1) }}%</p>
@@ -127,7 +126,7 @@
       <div class="row g-4 mt-1">
         <div class="col-lg-6">
           <div class="table-card h-100">
-            <h4>🚨 Problems Found</h4>
+            <h4>Problems found</h4>
             {% if inspection.problems_found %}
               <ul class="feature-list">
                 {% for item in inspection.problems_found %}
@@ -146,7 +145,7 @@
 
         <div class="col-lg-6">
           <div class="table-card h-100">
-            <h4>🔐 Evidence Integrity</h4>
+            <h4>Evidence integrity</h4>
             <p><strong>Inspection ID:</strong> {{ inspection.inspection_id if inspection.inspection_id else inspection.id }}</p>
             <p><strong>Captured:</strong> {{ inspection.date }} {{ inspection.time or '' }}</p>
             <p><strong>Officer:</strong> {{ inspection.inspector }}</p>

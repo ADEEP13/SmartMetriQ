@@ -7,14 +7,15 @@
   <div class="row justify-content-center">
     <div class="col-lg-10">
       <div class="scanner-panel card-shadow">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div class="scanner-header d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
           <div>
             <p class="eyebrow mb-1">Inspection Workflow</p>
-            <h2 class="mb-0">Product Scanner</h2>
+            <h1 class="mb-0">Scan a product label</h1>
+            <p class="text-muted mb-0 mt-2">Capture a clear label image. SmartMetriQ will read declarations and flag items for review.</p>
           </div>
           <div class="d-flex gap-2 flex-wrap mt-3 mt-md-0">
-            <button id="startCameraBtn" class="btn btn-primary">Start Camera</button>
-            <button id="captureBtn" class="btn btn-outline-primary" disabled>Capture Image</button>
+            <button id="startCameraBtn" class="btn btn-primary">Use camera</button>
+            <button id="captureBtn" class="btn btn-outline-primary" disabled>Capture image</button>
             <button id="retakeBtn" class="btn btn-outline-secondary" hidden>Retake</button>
           </div>
         </div>
@@ -32,7 +33,7 @@
 
           <div class="col-lg-5">
             <div class="upload-box h-100">
-              <h4>Product Images</h4>
+              <h2 class="h5">Image details</h2>
               <p class="text-muted small mb-3">
                 Capture front, back, side, or label close-up images for review.
               </p>
@@ -61,8 +62,8 @@
               </div>
 
               <div class="mb-3 border rounded p-3 bg-light">
-                <strong>AI Model:</strong>
-                Standard OCR with image enhancement
+                <span class="status-dot"></span><strong>Standard OCR</strong>
+                <span class="d-block small text-muted mt-1">Enhanced for packaging labels. No model training required.</span>
               </div>
 
               <div class="mb-3">
@@ -75,7 +76,7 @@
               </div>
 
               <div class="d-grid gap-2">
-                <button id="submitBtn" class="btn btn-success">Submit for Analysis</button>
+                <button id="submitBtn" class="btn btn-primary">Run inspection</button>
               </div>
               <div id="analysisStatus" class="analysis-status mt-3" role="status" aria-live="polite" hidden>
                 <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
