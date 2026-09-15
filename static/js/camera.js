@@ -133,14 +133,19 @@ document.addEventListener('DOMContentLoaded', () => {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Analyzing...';
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
     try {
       const response = await fetch('/upload', {
         method: 'POST',
         headers: {
           'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
         },
+        signal: controller.signal,
         body: formData
       });
+      clearTimeout(timeoutId);
 
       let result;
       try {
@@ -160,7 +165,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       throw new Error('No analysis page was returned by the server.');
     } catch (error) {
-      alert(error.message || 'Analysis could not be completed. Please try again.');
+      clearTimeout(timeoutId);
+      const message = error.name === 'AbortError'
+        ? 'Analysis timed out. Please try a smaller or clearer image.'
+        : (error.message || 'Analysis could not be completed. Please try again.');
+      alert(message);
       console.error('Upload error:', error);
       submitBtn.disabled = false;
       submitBtn.textContent = 'Submit for Analysis';

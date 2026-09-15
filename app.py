@@ -5,6 +5,7 @@ import os
 import re
 import secrets
 import sqlite3
+import time
 import uuid
 from datetime import date, datetime
 
@@ -55,6 +56,8 @@ UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_IMAGE_PIXELS = 30_000_000
+OCR_TIMEOUT_SECONDS = float(os.environ.get('SMARTMETRIQ_OCR_TIMEOUT_SECONDS', '20'))
+OCR_MAX_SECONDS = float(os.environ.get('SMARTMETRIQ_OCR_MAX_SECONDS', '45'))
 DB_PATH = os.path.join(app.root_path, 'smartmetriq.db')
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
@@ -650,20 +653,8 @@ def _estimate_ocr_confidence(image, language_code):
 
 
 def _rotate_image_for_best_ocr(image, language_code):
-    if pytesseract is None or Image is None:
-        return image, 0
-
-    try:
-        osd = pytesseract.image_to_osd(
-            image,
-            lang=language_code,
-            config='--psm 0 -c min_characters_to_try=5',
-        )
-        angle_match = re.search(r'Rotate:\s*(\d+)', osd)
-        angle = int(angle_match.group(1)) if angle_match else 0
-    except (OSError, RuntimeError, ValueError):
-        angle = 0
-    return (image.rotate(angle, expand=True) if angle else image.copy()), angle
+    # OSD adds another Tesseract subprocess and can stall on low-resource hosts.
+    return image.copy(), 0
 
 
 def _apply_preprocessing_pipeline(image):
@@ -738,13 +729,40 @@ def perform_multilingual_ocr(image_path, requested_language='eng'):
         rotated, best_angle = _rotate_image_for_best_ocr(original, language_code)
         variants = _apply_preprocessing_pipeline(rotated)
         scored = []
+        deadline = time.monotonic() + OCR_MAX_SECONDS
 
         for name, variant in variants.items():
+            if time.monotonic() >= deadline:
+                break
             variant_path = os.path.join(PROCESSED_IMAGE_FOLDER, f'{uuid.uuid4().hex}_{name}.png')
             variant.save(variant_path, format='PNG')
-            raw_text = pytesseract.image_to_string(variant, lang=language_code, config='--psm 11 --oem 3')
+            data = pytesseract.image_to_data(
+                variant,
+                lang=language_code,
+                config='--psm 11 --oem 3',
+                output_type=pytesseract.Output.DICT,
+                timeout=OCR_TIMEOUT_SECONDS,
+            )
+            words = [
+                value.strip()
+                for value in data.get('text', [])
+                if value and value.strip()
+            ]
+            raw_text = '\n'.join(words)
             cleaned = _safe_ocr_text(raw_text)
-            confidence = _estimate_ocr_confidence(variant, language_code)
+            confidence_values = []
+            for value in data.get('conf', []):
+                try:
+                    numeric_value = float(value)
+                    if numeric_value >= 0:
+                        confidence_values.append(numeric_value)
+                except (TypeError, ValueError):
+                    continue
+            confidence = (
+                sum(confidence_values) / len(confidence_values)
+                if confidence_values
+                else 0.0
+            )
             scored.append({
                 'name': name,
                 'path': variant_path,
