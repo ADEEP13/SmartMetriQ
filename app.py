@@ -56,8 +56,8 @@ UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_IMAGE_PIXELS = 30_000_000
-OCR_TIMEOUT_SECONDS = float(os.environ.get('SMARTMETRIQ_OCR_TIMEOUT_SECONDS', '20'))
-OCR_MAX_SECONDS = float(os.environ.get('SMARTMETRIQ_OCR_MAX_SECONDS', '45'))
+OCR_TIMEOUT_SECONDS = float(os.environ.get('SMARTMETRIQ_OCR_TIMEOUT_SECONDS', '8'))
+OCR_MAX_SECONDS = float(os.environ.get('SMARTMETRIQ_OCR_MAX_SECONDS', '25'))
 DB_PATH = os.path.join(app.root_path, 'smartmetriq.db')
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
@@ -779,30 +779,37 @@ def perform_multilingual_ocr(image_path, requested_language='eng'):
             variant_path = os.path.join(PROCESSED_IMAGE_FOLDER, f'{uuid.uuid4().hex}_{name}.png')
             variant.save(variant_path, format='PNG')
             psm = '4' if name == 'normal' else '6'
-            data = pytesseract.image_to_data(
-                variant,
-                lang=language_code,
-                config=f'--psm {psm} --oem 3 -c preserve_interword_spaces=1',
-                output_type=pytesseract.Output.DICT,
-                timeout=OCR_TIMEOUT_SECONDS,
-            )
-            raw_text = _ocr_text_from_data(data)
-            if not raw_text.strip():
+            try:
                 raw_text = pytesseract.image_to_string(
                     variant,
                     lang=language_code,
                     config=f'--psm {psm} --oem 3',
-                    timeout=OCR_TIMEOUT_SECONDS,
+                    timeout=min(OCR_TIMEOUT_SECONDS, max(1, deadline - time.monotonic())),
                 )
+            except Exception as exc:
+                fallback['debug'].setdefault('errors', []).append(
+                    f'{name}: {type(exc).__name__}: {str(exc).strip()[:120]}'
+                )
+                continue
             cleaned = _safe_ocr_text(raw_text)
             confidence_values = []
-            for value in data.get('conf', []):
-                try:
-                    numeric_value = float(value)
-                    if numeric_value >= 0:
-                        confidence_values.append(numeric_value)
-                except (TypeError, ValueError):
-                    continue
+            try:
+                data = pytesseract.image_to_data(
+                    variant,
+                    lang=language_code,
+                    config=f'--psm {psm} --oem 3',
+                    output_type=pytesseract.Output.DICT,
+                    timeout=min(3, max(1, deadline - time.monotonic())),
+                )
+                for value in data.get('conf', []):
+                    try:
+                        numeric_value = float(value)
+                        if numeric_value >= 0:
+                            confidence_values.append(numeric_value)
+                    except (TypeError, ValueError):
+                        continue
+            except Exception:
+                pass
             confidence = (
                 sum(confidence_values) / len(confidence_values)
                 if confidence_values
