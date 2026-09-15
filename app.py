@@ -758,6 +758,14 @@ def perform_multilingual_ocr(image_path, requested_language='eng'):
         return fallback
 
     try:
+        try:
+            pytesseract.get_tesseract_version()
+        except Exception as exc:
+            diagnostic = f'{type(exc).__name__}: {str(exc).strip()}'
+            fallback['error'] = f'Tesseract is unavailable: {diagnostic[:240]}'
+            fallback['debug']['error'] = diagnostic[:240]
+            return fallback
+
         original = Image.open(image_path)
         original = ImageOps.exif_transpose(original)
         rotated, best_angle = _rotate_image_for_best_ocr(original, language_code)
@@ -838,8 +846,9 @@ def perform_multilingual_ocr(image_path, requested_language='eng'):
             },
         }
     except Exception as exc:
-        fallback['debug']['error'] = str(exc)[:240]
-        fallback['error'] = 'OCR processing failed. Try a brighter, closer image.'
+        diagnostic = f'{type(exc).__name__}: {str(exc).strip()}'
+        fallback['debug']['error'] = diagnostic[:240]
+        fallback['error'] = f'OCR processing failed: {diagnostic[:240]}'
         return fallback
 
 
