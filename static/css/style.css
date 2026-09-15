@@ -65,6 +65,125 @@ body {
   color: #fff;
 }
 
+.home-hero {
+  background: #edf4f3;
+  padding: 7rem 0 6rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.home-hero h1 {
+  max-width: 700px;
+  font-size: clamp(2.8rem, 6vw, 5.4rem);
+  line-height: .98;
+  letter-spacing: -.065em;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.home-hero h1 span { color: var(--primary); }
+
+.home-lead {
+  max-width: 600px;
+  margin-top: 1.5rem;
+  color: #53666f;
+  font-size: 1.12rem;
+}
+
+.home-proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.4rem;
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+.home-proof i {
+  display: inline-block;
+  width: .45rem;
+  height: .45rem;
+  margin-right: .35rem;
+  border-radius: 50%;
+  background: #4b9f83;
+}
+
+.home-console {
+  padding: 1.7rem;
+  border-radius: 16px;
+  background: var(--navy);
+  color: #e7f0f1;
+  box-shadow: 0 22px 45px rgba(16, 42, 54, .2);
+}
+
+.console-top, .console-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.console-top {
+  color: #8fb4bd;
+  font-size: .68rem;
+  letter-spacing: .14em;
+  font-weight: 750;
+}
+
+.console-dot {
+  width: .55rem;
+  height: .55rem;
+  border-radius: 50%;
+  background: #69c7a1;
+}
+
+.console-label {
+  margin-top: 3rem;
+  color: #8fb4bd;
+  font-size: .78rem;
+}
+
+.console-product {
+  padding: .7rem 0 1.4rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+
+.console-line {
+  padding: .85rem 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  color: #a9c0c5;
+  font-size: .85rem;
+}
+
+.console-line strong { color: #f4fbfa; font-size: .82rem; }
+.console-footer { margin-top: 1.6rem; color: #8fb4bd; font-size: .78rem; }
+
+.home-section {
+  padding: 5.5rem 0;
+  background: #fff;
+}
+
+.section-heading {
+  max-width: 560px;
+  margin-bottom: 2.3rem;
+}
+
+.section-heading h2 {
+  color: var(--navy);
+  letter-spacing: -.04em;
+  font-weight: 750;
+}
+
+.home-step {
+  height: 100%;
+  padding: 1.6rem 0;
+  border-top: 2px solid #b6d3d5;
+}
+
+.home-step span { color: var(--primary); font-size: .75rem; font-weight: 800; letter-spacing: .1em; }
+.home-step h3 { margin-top: 1.2rem; color: var(--navy); font-size: 1.2rem; }
+.home-step p { color: var(--muted); max-width: 300px; }
+.chart-card canvas { min-height: 230px; }
+
 .min-vh-75 {
   min-height: 75vh;
 }
@@ -390,6 +509,7 @@ body {
 }
 
 @media (max-width: 767px) {
+  .home-hero { padding: 4.5rem 0; }
   .hero-section .btn {
     width: 100%;
   }

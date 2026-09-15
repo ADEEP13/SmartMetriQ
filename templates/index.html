@@ -1,83 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SmartMetriQ</title>
+{% extends 'base.html' %}
 
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="style.css" />
-  </head>
-<body>
-<section class="hero-section">
+{% block title %}SmartMetriQ | Label compliance, made clearer{% endblock %}
+
+{% block content %}
+<section class="home-hero">
   <div class="container">
-    <div class="row align-items-center min-vh-75 py-5">
+    <div class="row align-items-center g-5">
       <div class="col-lg-7">
-        <p class="eyebrow">Legal Metrology Compliance</p>
-        <h1>SmartMetriQ</h1>
-        <h2>AI-Assisted Legal Metrology Compliance Scanner</h2>
-        <p class="lead">
-          Scan packaged commodity labels and automatically check important mandatory declarations.
-        </p>
-
+        <p class="eyebrow">Label compliance workspace</p>
+        <h1>Read the label.<br><span>Review with confidence.</span></h1>
+        <p class="home-lead">SmartMetriQ helps teams capture packaged-product labels, extract key declarations, and keep a clear evidence trail for every inspection.</p>
         <div class="d-flex flex-wrap gap-3 mt-4">
-          <a href="{{ url_for('scanner') }}" class="btn btn-primary btn-lg">Scan Product</a>
-          <a href="{{ url_for('scanner') }}" class="btn btn-outline-light btn-lg">Upload Image</a>
+          <a href="{{ url_for('scanner') }}" class="btn btn-primary btn-lg">Start an inspection</a>
+          <a href="{{ url_for('know_rules') }}" class="btn btn-outline-secondary btn-lg">Explore the rules</a>
+        </div>
+        <div class="home-proof mt-4">
+          <span><i></i> Camera or file upload</span>
+          <span><i></i> OCR-assisted review</span>
+          <span><i></i> Evidence saved with each record</span>
         </div>
       </div>
-
       <div class="col-lg-5">
-        <div class="feature-card card-glow">
-          <h3>Quick Actions</h3>
-          <ul class="feature-list">
-            <li>Scan Product</li>
-            <li>Upload Image</li>
-            <li>Inspection Dashboard</li>
-            <li>Inspection History</li>
-          </ul>
+        <div class="home-console">
+          <div class="console-top"><span>LIVE WORKSPACE</span><span class="console-dot"></span></div>
+          <div class="console-label">Latest inspection</div>
+          <div class="console-product">Packaged product label</div>
+          <div class="console-line"><span>OCR status</span><strong>Ready for review</strong></div>
+          <div class="console-line"><span>Declarations</span><strong>6 checks</strong></div>
+          <div class="console-line"><span>Evidence</span><strong>SHA-256 recorded</strong></div>
+          <div class="console-footer">A focused workflow for better decisions.</div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="container section-spacing">
-  <div class="row g-4">
-    <div class="col-md-6 col-lg-3">
-      <div class="info-card h-100">
-        <span class="icon">📦</span>
-        <h4>Label Scan</h4>
-        <p>Capture product packaging and review the mandatory declarations.</p>
-      </div>
+<section class="home-section">
+  <div class="container">
+    <div class="section-heading">
+      <p class="eyebrow">One workflow, three steps</p>
+      <h2>From label to defensible review</h2>
     </div>
-
-    <div class="col-md-6 col-lg-3">
-      <div class="info-card h-100">
-        <span class="icon">🔎</span>
-        <h4>OCR Review</h4>
-        <p>Extract text from labels to support quick compliance review.</p>
-      </div>
-    </div>
-
-    <div class="col-md-6 col-lg-3">
-      <div class="info-card h-100">
-        <span class="icon">✅</span>
-        <h4>Rule Checking</h4>
-        <p>Compare required declarations against a configurable rule set.</p>
-      </div>
-    </div>
-
-    <div class="col-md-6 col-lg-3">
-      <div class="info-card h-100">
-        <span class="icon">📄</span>
-        <h4>Evidence Log</h4>
-        <p>Record inspection details, images, and audit trail information.</p>
-      </div>
+    <div class="row g-4">
+      <div class="col-md-4"><div class="home-step"><span>01</span><h3>Capture</h3><p>Use the camera or upload a clear label image with the relevant language selected.</p></div></div>
+      <div class="col-md-4"><div class="home-step"><span>02</span><h3>Read</h3><p>OCR-assisted extraction turns visible packaging text into reviewable fields.</p></div></div>
+      <div class="col-md-4"><div class="home-step"><span>03</span><h3>Decide</h3><p>Compare declarations, record findings, and keep the original evidence attached.</p></div></div>
     </div>
   </div>
 </section>
-</body>
-</html>
+{% endblock %}

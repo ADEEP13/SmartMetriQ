@@ -1772,10 +1772,17 @@ def dashboard():
     if session.get('user_role') != 'officer':
         return redirect(url_for('consumer_dashboard'))
 
+    database_inspections = get_inspection_records()
     session_inspections = session.get('inspections', [])
-    static_inspections = get_demo_inspection_catalog()
-    recent_inspections = list(session_inspections) if session_inspections else static_inspections
-    recent_inspections.extend([item for item in get_inspection_records() if item not in recent_inspections])
+    recent_inspections = list(database_inspections)
+    known_ids = {item.get('inspection_id') or item.get('id') for item in recent_inspections}
+    for item in session_inspections:
+        item_id = item.get('inspection_id') or item.get('id')
+        if item_id not in known_ids:
+            recent_inspections.append(item)
+            known_ids.add(item_id)
+    if not recent_inspections:
+        recent_inspections = get_demo_inspection_catalog()
 
     for item in recent_inspections:
         item.setdefault('action', 'View Analysis')
@@ -1810,11 +1817,11 @@ def dashboard():
     }
 
     chart_data = [
-        max(2, review + violations),
-        max(1, review),
-        max(1, violations),
-        max(2, review + 1),
-        max(1, violations + 1),
+        sum(1 for item in recent_inspections if item.get('issue_category') == 'Missing Information'),
+        sum(1 for item in recent_inspections if item.get('issue_category') == 'MRP Problem'),
+        sum(1 for item in recent_inspections if item.get('issue_category') == 'Quantity Problem'),
+        sum(1 for item in recent_inspections if item.get('issue_category') == 'Date Problem'),
+        sum(1 for item in recent_inspections if item.get('issue_category') == 'Manufacturer Details'),
     ]
     ai_status = get_ai_model_status()
 
