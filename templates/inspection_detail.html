@@ -83,6 +83,9 @@
               <p class="mt-3 mb-0 text-success"><strong>OCR status:</strong> Text detected and used for compliance analysis.</p>
             {% else %}
               <p class="mt-3 mb-0 text-warning"><strong>OCR status:</strong> Text was not detected. Try a brighter, closer image with the label facing the camera.</p>
+              {% if inspection.ocr_error %}
+                <p class="mt-2 mb-0 small text-muted"><strong>Diagnostic:</strong> {{ inspection.ocr_error }}</p>
+              {% endif %}
             {% endif %}
           </div>
         </div>

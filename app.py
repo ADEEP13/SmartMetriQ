@@ -249,7 +249,8 @@ def init_db():
             score INTEGER,
             findings TEXT,
             ocr_confidence REAL,
-            ocr_status TEXT
+            ocr_status TEXT,
+            ocr_error TEXT
         )
     """)
     conn.execute("""
@@ -462,6 +463,8 @@ def ensure_inspection_schema():
         conn.execute("ALTER TABLE inspections ADD COLUMN ocr_confidence REAL DEFAULT 0")
     if 'ocr_status' not in columns:
         conn.execute("ALTER TABLE inspections ADD COLUMN ocr_status TEXT DEFAULT 'NOT DETECTED'")
+    if 'ocr_error' not in columns:
+        conn.execute("ALTER TABLE inspections ADD COLUMN ocr_error TEXT DEFAULT ''")
     conn.commit()
     conn.close()
 
@@ -524,6 +527,9 @@ def get_tesseract_language_code(language_value):
     if value in LANGUAGE_OPTIONS:
         return value
     normalized = value.lower().replace(' ', '')
+    aliases = {'english': 'eng', 'hindi': 'hin', 'kannada': 'kan'}
+    if normalized in aliases:
+        return aliases[normalized]
     return normalized if normalized else 'eng'
 
 
@@ -1051,8 +1057,8 @@ def save_inspection_to_db(record):
             inspection_id, user_id, product_name, product_type, image_path, language, language_code,
             ocr_text, extracted_data, compliance_status, violation_details, officer_notes,
             evidence_hash, created_at, updated_at, result_summary, score, findings, source_type
-            , ocr_confidence, ocr_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            , ocr_confidence, ocr_status, ocr_error
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             record.get('inspection_id') or record.get('id'),
@@ -1076,6 +1082,7 @@ def save_inspection_to_db(record):
             record.get('source_type') or 'PHYSICAL_PRODUCT',
             record.get('ocr_confidence', 0),
             record.get('ocr_status') or 'NOT DETECTED',
+            record.get('ocr_error', ''),
         ),
     )
     conn.commit()
@@ -1120,6 +1127,7 @@ def get_inspection_records():
             'ocr_text': row['ocr_text'] or 'Text could not be clearly detected. Manual verification required.',
             'ocr_confidence': row['ocr_confidence'] if 'ocr_confidence' in row.keys() else 0,
             'ocr_status': row['ocr_status'] if 'ocr_status' in row.keys() else 'NOT DETECTED',
+            'ocr_error': row['ocr_error'] if 'ocr_error' in row.keys() else '',
             'extracted_data': json.loads(row['extracted_data']) if row['extracted_data'] else {},
             'score': row['score'] or 0,
             'findings': json.loads(row['findings']) if row['findings'] else [],
@@ -1951,6 +1959,7 @@ def upload_image():
             'ocr_debug': ocr_result.get('debug', {}),
             'ocr_confidence': ocr_result.get('confidence', 0),
             'ocr_status': 'DETECTED' if ocr_result.get('success') else 'NOT DETECTED',
+            'ocr_error': ocr_result.get('error', ''),
             'extracted_data': extracted_data,
             'score': analysis['score'],
             'findings': analysis['findings'],
