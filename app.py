@@ -764,7 +764,7 @@ def perform_multilingual_ocr(image_path, requested_language='eng'):
                 break
             variant_path = os.path.join(PROCESSED_IMAGE_FOLDER, f'{uuid.uuid4().hex}_{name}.png')
             variant.save(variant_path, format='PNG')
-            psm = '6' if name in {'grayscale', 'soft_threshold'} else '11'
+            psm = '4' if name == 'normal' else '6'
             data = pytesseract.image_to_data(
                 variant,
                 lang=language_code,
@@ -773,6 +773,13 @@ def perform_multilingual_ocr(image_path, requested_language='eng'):
                 timeout=OCR_TIMEOUT_SECONDS,
             )
             raw_text = _ocr_text_from_data(data)
+            if not raw_text.strip():
+                raw_text = pytesseract.image_to_string(
+                    variant,
+                    lang=language_code,
+                    config=f'--psm {psm} --oem 3',
+                    timeout=OCR_TIMEOUT_SECONDS,
+                )
             cleaned = _safe_ocr_text(raw_text)
             confidence_values = []
             for value in data.get('conf', []):
@@ -799,7 +806,7 @@ def perform_multilingual_ocr(image_path, requested_language='eng'):
         if not scored:
             return fallback
 
-        best = max(scored, key=lambda item: (item['confidence'], len(item['cleaned_text'])))
+        best = max(scored, key=lambda item: (len(item['cleaned_text']), item['confidence']))
         cleaned = best['cleaned_text']
         if not cleaned:
             return fallback
