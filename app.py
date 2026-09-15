@@ -632,6 +632,22 @@ def _safe_ocr_text(raw_text):
     return re.sub(r'\s+', ' ', str(raw_text)).strip()
 
 
+def _ocr_text_from_data(data):
+    """Rebuild OCR text in reading order while preserving detected lines."""
+    grouped_lines = {}
+    for index, value in enumerate(data.get('text', [])):
+        text = (value or '').strip()
+        if not text:
+            continue
+        key = (
+            data.get('block_num', [0] * len(data.get('text', [])))[index],
+            data.get('par_num', [0] * len(data.get('text', [])))[index],
+            data.get('line_num', [0] * len(data.get('text', [])))[index],
+        )
+        grouped_lines.setdefault(key, []).append(text)
+    return '\n'.join(' '.join(words) for words in grouped_lines.values())
+
+
 def _estimate_ocr_confidence(image, language_code):
     if pytesseract is None or Image is None:
         return 0.0
@@ -666,6 +682,9 @@ def _apply_preprocessing_pipeline(image):
     if min(image.size) < 2000:
         scale = 2000 / min(image.size)
         image = image.resize((max(1, int(image.width * scale)), max(1, int(image.height * scale))), Image.Resampling.LANCZOS)
+    if max(image.size) > 3200:
+        scale = 3200 / max(image.size)
+        image = image.resize((max(1, int(image.width * scale)), max(1, int(image.height * scale))), Image.Resampling.LANCZOS)
 
     gray = ImageOps.grayscale(image)
     gray = ImageOps.autocontrast(gray)
@@ -674,10 +693,12 @@ def _apply_preprocessing_pipeline(image):
     gray = gray.filter(ImageFilter.SHARPEN)
 
     threshold = gray.point(lambda p: 255 if p > 150 else 0)
+    soft_threshold = gray.point(lambda p: 255 if p > 115 else 0)
     return {
         'normal': ImageEnhance.Contrast(image).enhance(1.5).filter(ImageFilter.SHARPEN),
         'grayscale': gray,
         'threshold': threshold,
+        'soft_threshold': soft_threshold,
     }
 
 
@@ -736,19 +757,15 @@ def perform_multilingual_ocr(image_path, requested_language='eng'):
                 break
             variant_path = os.path.join(PROCESSED_IMAGE_FOLDER, f'{uuid.uuid4().hex}_{name}.png')
             variant.save(variant_path, format='PNG')
+            psm = '6' if name in {'grayscale', 'soft_threshold'} else '11'
             data = pytesseract.image_to_data(
                 variant,
                 lang=language_code,
-                config='--psm 11 --oem 3',
+                config=f'--psm {psm} --oem 3 -c preserve_interword_spaces=1',
                 output_type=pytesseract.Output.DICT,
                 timeout=OCR_TIMEOUT_SECONDS,
             )
-            words = [
-                value.strip()
-                for value in data.get('text', [])
-                if value and value.strip()
-            ]
-            raw_text = '\n'.join(words)
+            raw_text = _ocr_text_from_data(data)
             cleaned = _safe_ocr_text(raw_text)
             confidence_values = []
             for value in data.get('conf', []):
