@@ -115,7 +115,9 @@
       <div class="col-lg-6">
         <div class="chart-card">
           <h4>Issue frequency</h4>
-          <canvas id="violationChart" height="180"></canvas>
+          <div class="chart-viewport">
+            <canvas id="violationChart"></canvas>
+          </div>
         </div>
       </div>
 
@@ -189,6 +191,7 @@
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: false,
       plugins: {
         legend: { display: false }
       },

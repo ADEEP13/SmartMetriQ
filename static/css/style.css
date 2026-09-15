@@ -182,7 +182,19 @@ body {
 .home-step span { color: var(--primary); font-size: .75rem; font-weight: 800; letter-spacing: .1em; }
 .home-step h3 { margin-top: 1.2rem; color: var(--navy); font-size: 1.2rem; }
 .home-step p { color: var(--muted); max-width: 300px; }
-.chart-card canvas { min-height: 230px; }
+.chart-viewport {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  margin-top: 1rem;
+  overflow: hidden;
+}
+
+.chart-viewport canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
 
 .min-vh-75 {
   min-height: 75vh;
@@ -510,6 +522,10 @@ body {
 
 @media (max-width: 767px) {
   .home-hero { padding: 4.5rem 0; }
+
+  .chart-viewport {
+    height: 210px;
+  }
   .hero-section .btn {
     width: 100%;
   }
