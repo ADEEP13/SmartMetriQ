@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const cameraStream = document.getElementById('cameraStream');
   const cameraPlaceholder = document.getElementById('cameraPlaceholder');
   const capturedCanvas = document.getElementById('capturedCanvas');
+  const analysisStatus = document.getElementById('analysisStatus');
+  const analysisStatusText = document.getElementById('analysisStatusText');
 
   let stream = null;
   let capturedImageData = null;
@@ -132,6 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Analyzing...';
+    analysisStatus.hidden = false;
+    analysisStatus.classList.remove('analysis-error');
+    analysisStatusText.textContent = 'Uploading image securely...';
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -146,6 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         body: formData
       });
       clearTimeout(timeoutId);
+      analysisStatusText.textContent = 'Reading label and checking declarations...';
 
       let result;
       try {
@@ -159,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (result.redirect_url) {
+        analysisStatusText.textContent = 'Analysis complete. Opening results...';
         window.location.href = result.redirect_url;
         return;
       }
@@ -170,6 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ? 'Analysis timed out. Please try a smaller or clearer image.'
         : (error.message || 'Analysis could not be completed. Please try again.');
       alert(message);
+      analysisStatus.classList.add('analysis-error');
+      analysisStatusText.textContent = message;
       console.error('Upload error:', error);
       submitBtn.disabled = false;
       submitBtn.textContent = 'Submit for Analysis';

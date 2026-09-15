@@ -247,7 +247,9 @@ def init_db():
             updated_at TEXT,
             result_summary TEXT,
             score INTEGER,
-            findings TEXT
+            findings TEXT,
+            ocr_confidence REAL,
+            ocr_status TEXT
         )
     """)
     conn.execute("""
@@ -456,6 +458,10 @@ def ensure_inspection_schema():
     columns = [row['name'] for row in conn.execute("PRAGMA table_info(inspections)").fetchall()]
     if 'source_type' not in columns:
         conn.execute("ALTER TABLE inspections ADD COLUMN source_type TEXT DEFAULT 'PHYSICAL_PRODUCT'")
+    if 'ocr_confidence' not in columns:
+        conn.execute("ALTER TABLE inspections ADD COLUMN ocr_confidence REAL DEFAULT 0")
+    if 'ocr_status' not in columns:
+        conn.execute("ALTER TABLE inspections ADD COLUMN ocr_status TEXT DEFAULT 'NOT DETECTED'")
     conn.commit()
     conn.close()
 
@@ -742,6 +748,7 @@ def perform_multilingual_ocr(image_path, requested_language='eng'):
     }
 
     if pytesseract is None or Image is None:
+        fallback['error'] = 'OCR engine is unavailable on this server.'
         return fallback
 
     try:
@@ -817,7 +824,9 @@ def perform_multilingual_ocr(image_path, requested_language='eng'):
                 'rotation_applied': best_angle,
             },
         }
-    except Exception:
+    except Exception as exc:
+        fallback['debug']['error'] = str(exc)[:240]
+        fallback['error'] = 'OCR processing failed. Try a brighter, closer image.'
         return fallback
 
 
@@ -1035,7 +1044,8 @@ def save_inspection_to_db(record):
             inspection_id, user_id, product_name, product_type, image_path, language, language_code,
             ocr_text, extracted_data, compliance_status, violation_details, officer_notes,
             evidence_hash, created_at, updated_at, result_summary, score, findings, source_type
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            , ocr_confidence, ocr_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             record.get('inspection_id') or record.get('id'),
@@ -1057,6 +1067,8 @@ def save_inspection_to_db(record):
             record.get('score', 0),
             json.dumps(record.get('findings', []), ensure_ascii=False),
             record.get('source_type') or 'PHYSICAL_PRODUCT',
+            record.get('ocr_confidence', 0),
+            record.get('ocr_status') or 'NOT DETECTED',
         ),
     )
     conn.commit()
@@ -1099,6 +1111,8 @@ def get_inspection_records():
             'language': row['language'] or 'English',
             'language_code': row['language_code'] or 'eng',
             'ocr_text': row['ocr_text'] or 'Text could not be clearly detected. Manual verification required.',
+            'ocr_confidence': row['ocr_confidence'] if 'ocr_confidence' in row.keys() else 0,
+            'ocr_status': row['ocr_status'] if 'ocr_status' in row.keys() else 'NOT DETECTED',
             'extracted_data': json.loads(row['extracted_data']) if row['extracted_data'] else {},
             'score': row['score'] or 0,
             'findings': json.loads(row['findings']) if row['findings'] else [],
@@ -1822,6 +1836,8 @@ def inspection_detail(inspection_id):
     inspection.setdefault('language_label', get_language_label(inspection.get('language', 'eng')))
     inspection.setdefault('ai_model_status', get_ai_model_status())
     inspection.setdefault('ocr_text', 'Text could not be clearly detected. Manual verification required.')
+    inspection.setdefault('ocr_confidence', 0)
+    inspection.setdefault('ocr_status', 'DETECTED' if inspection.get('ocr_text') and not inspection['ocr_text'].startswith('Text could not') else 'NOT DETECTED')
     inspection.setdefault('extracted_data', {})
     inspection.setdefault('findings', [])
     inspection.setdefault('violation_details', inspection.get('findings'))
@@ -1926,6 +1942,8 @@ def upload_image():
             'language_code': ocr_result.get('language_code', get_tesseract_language_code(language)),
             'ocr_text': ocr_result.get('text', 'Text could not be clearly detected. Manual verification required.'),
             'ocr_debug': ocr_result.get('debug', {}),
+            'ocr_confidence': ocr_result.get('confidence', 0),
+            'ocr_status': 'DETECTED' if ocr_result.get('success') else 'NOT DETECTED',
             'extracted_data': extracted_data,
             'score': analysis['score'],
             'findings': analysis['findings'],
@@ -1969,6 +1987,9 @@ def upload_image():
                 'evidence_hash': evidence_hash,
                 'audit_events': audit_events,
                 'ocr_text': inspection_record['ocr_text'],
+                'ocr_status': inspection_record['ocr_status'],
+                'ocr_confidence': inspection_record['ocr_confidence'],
+                'ocr_error': ocr_result.get('error', ''),
                 'extracted_data': extracted_data,
                 'score': analysis['score'],
                 'findings': analysis['findings'],

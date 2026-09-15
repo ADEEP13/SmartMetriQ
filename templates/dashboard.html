@@ -84,9 +84,9 @@
         <div class="table-card">
           <h4>AI Model Status</h4>
           <div class="mt-3">
-            <p class="mb-1"><strong>Status:</strong> {% if ai_status.available %}Available{% else %}Model not trained yet{% endif %}</p>
+            <p class="mb-1"><strong>Status:</strong> {{ ai_status.status }}</p>
             <p class="mb-1"><strong>Dataset:</strong> {{ ai_status.dataset }}</p>
-            <p class="mb-1"><strong>Model Version:</strong> {{ ai_status.model_version }}</p>
+            <p class="mb-1"><strong>Processing:</strong> {{ ai_status.using }}</p>
             <p class="mb-1"><strong>Training Date:</strong> {{ ai_status.training_date }}</p>
             <p class="mb-1"><strong>Precision:</strong> {{ ai_status.precision if ai_status.precision is not none else 'N/A' }}</p>
             <p class="mb-1"><strong>Recall:</strong> {{ ai_status.recall if ai_status.recall is not none else 'N/A' }}</p>
