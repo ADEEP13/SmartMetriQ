@@ -8,7 +8,19 @@ import sqlite3
 import uuid
 from datetime import date, datetime
 
-from flask import Flask, abort, render_template, request, redirect, url_for, session, jsonify, send_file, send_from_directory
+from flask import (
+    Flask,
+    abort,
+    has_request_context,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    session,
+    jsonify,
+    send_file,
+    send_from_directory,
+)
 from werkzeug.exceptions import RequestEntityTooLarge
 
 try:
@@ -38,7 +50,8 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.environ.get('SMARTMETRIQ_SECURE_COOKIES') == '1',
 )
 
-UPLOAD_FOLDER = os.path.join(app.root_path, 'uploads')
+DATA_DIR = os.environ.get('SMARTMETRIQ_DATA_DIR', app.root_path)
+UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_IMAGE_PIXELS = 30_000_000
@@ -277,9 +290,10 @@ def generate_complaint_id():
 
 def save_complaint_record(record):
     complaint_id = record.get('complaint_id') or generate_complaint_id()
+    consumer_fallback = session.get('username') if has_request_context() else 'consumer'
     payload = {
         'complaint_id': complaint_id,
-        'consumer': record.get('consumer') or session.get('username') or 'consumer',
+        'consumer': record.get('consumer') or consumer_fallback or 'consumer',
         'product_name': record.get('product_name') or 'Unknown Product',
         'complaint_description': record.get('complaint_description') or '',
         'image_path': record.get('image_path') or '',
@@ -474,7 +488,7 @@ def save_uploaded_file(file_storage, target_folder=None):
                 raise ValueError('Invalid image format. Only JPEG and PNG files are allowed.')
             if image.width * image.height > MAX_IMAGE_PIXELS:
                 raise ValueError('Image dimensions are too large.')
-    except (OSError, ValueError) as exc:
+    except (OSError, SyntaxError, ValueError) as exc:
         raise ValueError('The uploaded file is not a valid JPEG or PNG image.') from exc
     finally:
         file_storage.stream.seek(0)
@@ -485,6 +499,9 @@ def save_uploaded_file(file_storage, target_folder=None):
     os.makedirs(destination_folder, exist_ok=True)
     file_path = os.path.join(destination_folder, unique_name)
     file_storage.save(file_path)
+    if os.path.getsize(file_path) > MAX_FILE_SIZE:
+        os.remove(file_path)
+        raise ValueError('File is too large. Please upload an image under 10 MB.')
     return unique_name
 
 
@@ -502,11 +519,8 @@ def get_tesseract_language_code(language_value):
 
 
 def get_ai_model_status():
-    metadata_path = os.path.join(app.root_path, 'models', 'model_version.json')
-    evaluation_path = os.path.join(app.root_path, 'models', 'evaluation_results.json')
-
     default_status = {
-        'status': 'Model not trained yet',
+        'status': 'Standard OCR active',
         'dataset': 'Product Description Image - English Hindi OCR',
         'model_version': 'N/A',
         'training_date': 'N/A',
@@ -517,41 +531,7 @@ def get_ai_model_status():
         'using': 'Standard OCR',
         'available': False,
     }
-
-    if not os.path.exists(metadata_path):
-        return default_status
-
-    try:
-        with open(metadata_path, 'r', encoding='utf-8') as fh:
-            metadata = json.load(fh)
-    except Exception:
-        return default_status
-
-    status = {
-        'status': 'Available',
-        'dataset': metadata.get('dataset', 'Product Description Image - English Hindi OCR'),
-        'model_version': metadata.get('version', 'v1.0'),
-        'training_date': metadata.get('training_date', 'N/A'),
-        'precision': None,
-        'recall': None,
-        'f1': None,
-        'mAP': None,
-        'using': 'ML text detection + OCR',
-        'available': True,
-    }
-
-    if os.path.exists(evaluation_path):
-        try:
-            with open(evaluation_path, 'r', encoding='utf-8') as fh:
-                metrics = json.load(fh)
-            status['precision'] = metrics.get('precision')
-            status['recall'] = metrics.get('recall')
-            status['f1'] = metrics.get('f1')
-            status['mAP'] = metrics.get('mAP')
-        except Exception:
-            pass
-
-    return status
+    return default_status
 
 
 def format_violation_display(value):
@@ -657,7 +637,9 @@ def _estimate_ocr_confidence(image, language_code):
         conf_values = []
         for item in data.get('conf', []):
             try:
-                conf_values.append(float(item))
+                value = float(item)
+                if value >= 0:
+                    conf_values.append(value)
             except Exception:
                 pass
         if not conf_values:
@@ -671,22 +653,17 @@ def _rotate_image_for_best_ocr(image, language_code):
     if pytesseract is None or Image is None:
         return image, 0
 
-    best_image = image
-    best_score = -1
-    best_angle = 0
-    for angle in (0, 90, 180, 270):
-        candidate = image.rotate(angle, expand=True) if angle else image.copy()
-        try:
-            text = pytesseract.image_to_string(candidate, lang=language_code, config='--psm 6')
-            cleaned = _safe_ocr_text(text)
-            score = len(re.sub(r'\s+', '', cleaned)) + (0.1 * _estimate_ocr_confidence(candidate, language_code))
-        except Exception:
-            score = 0
-        if score > best_score:
-            best_score = score
-            best_image = candidate
-            best_angle = angle
-    return best_image, best_angle
+    try:
+        osd = pytesseract.image_to_osd(
+            image,
+            lang=language_code,
+            config='--psm 0 -c min_characters_to_try=5',
+        )
+        angle_match = re.search(r'Rotate:\s*(\d+)', osd)
+        angle = int(angle_match.group(1)) if angle_match else 0
+    except (OSError, RuntimeError, ValueError):
+        angle = 0
+    return (image.rotate(angle, expand=True) if angle else image.copy()), angle
 
 
 def _apply_preprocessing_pipeline(image):
@@ -695,8 +672,8 @@ def _apply_preprocessing_pipeline(image):
 
     image = ImageOps.exif_transpose(image).convert('RGB')
 
-    if min(image.size) < 1200:
-        scale = 1400 / min(image.size)
+    if min(image.size) < 2000:
+        scale = 2000 / min(image.size)
         image = image.resize((max(1, int(image.width * scale)), max(1, int(image.height * scale))), Image.Resampling.LANCZOS)
 
     gray = ImageOps.grayscale(image)
@@ -705,7 +682,7 @@ def _apply_preprocessing_pipeline(image):
     gray = gray.filter(ImageFilter.MedianFilter(3))
     gray = gray.filter(ImageFilter.SHARPEN)
 
-    threshold = gray.point(lambda p: 255 if p > 180 else 0)
+    threshold = gray.point(lambda p: 255 if p > 150 else 0)
     return {
         'normal': ImageEnhance.Contrast(image).enhance(1.5).filter(ImageFilter.SHARPEN),
         'grayscale': gray,
@@ -765,7 +742,7 @@ def perform_multilingual_ocr(image_path, requested_language='eng'):
         for name, variant in variants.items():
             variant_path = os.path.join(PROCESSED_IMAGE_FOLDER, f'{uuid.uuid4().hex}_{name}.png')
             variant.save(variant_path, format='PNG')
-            raw_text = pytesseract.image_to_string(variant, lang=language_code, config='--psm 6')
+            raw_text = pytesseract.image_to_string(variant, lang=language_code, config='--psm 11 --oem 3')
             cleaned = _safe_ocr_text(raw_text)
             confidence = _estimate_ocr_confidence(variant, language_code)
             scored.append({
@@ -898,7 +875,12 @@ def extract_product_metadata(ocr_text, image_type='front'):
             extracted['mfg_date'] = match.group(1)
             break
 
-    use_by_match = re.search(r'(?:use\s*by|best\s*before|expiry|exp\.|expir(y|ation))\s*[:\-]?\s*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}|[0-9]{4}[/-][0-9]{1,2}[/-][0-9]{1,2})', text, flags=re.IGNORECASE)
+    use_by_match = re.search(
+        r'(?:use\s*by|best\s*before|expiry|exp\.|expiration)\s*[:\-]?\s*'
+        r'([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}|[0-9]{4}[/-][0-9]{1,2}[/-][0-9]{1,2})',
+        text,
+        flags=re.IGNORECASE,
+    )
     if use_by_match:
         extracted['use_by_date'] = use_by_match.group(1)
 
@@ -1879,7 +1861,7 @@ def upload_image():
         officer_name = session.get('username', 'System')
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         ai_status = get_ai_model_status()
-        ml_note = 'AI text detection model used' if ai_status.get('available') else 'AI model not trained — using standard OCR'
+        ml_note = 'Standard OCR used; no deployed text-detection model is configured'
         audit_events = [
             {'event_type': 'Inspection Created', 'description': 'Inspection created', 'timestamp': timestamp},
             {'event_type': 'Image Uploaded', 'description': 'Original image preserved for evidence', 'timestamp': timestamp},
