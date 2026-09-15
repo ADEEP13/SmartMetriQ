@@ -130,7 +130,7 @@ LEGAL_RULES = {
     },
     'care': {
         'title': 'Consumer Care',
-        'summary': 'Consumer care details should be available where applicable.',
+        'summary': 'Consumer care details should be available where applicable',
         'reference': 'Consumer grievance and contact information'
     },
     'origin': {
